@@ -9,6 +9,6 @@
   "issue_tracker": "https://github.com/jsttylr/flameboss-ha/issues",
   "loggers": ["custom_components.flameboss"],
   "requirements": ["paho-mqtt>=1.6.1"],
-  "version": "0.1.0",
+  "version": "0.1.1",
   "zeroconf": ["_flameboss._tcp.local."]
 }

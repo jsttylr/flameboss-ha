@@ -16,6 +16,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util.unit_conversion import TemperatureConverter
 
 from . import FlameBossConfigEntry
 from .client import decode_temp
@@ -39,6 +40,14 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
+def _display_temp(hass, celsius: float | None) -> float | None:
+    """Attributes aren't unit-converted by HA, so convert to the user's unit ourselves."""
+    if celsius is None:
+        return None
+    unit = hass.config.units.temperature_unit
+    return round(TemperatureConverter.convert(celsius, UnitOfTemperature.CELSIUS, unit), 1)
+
+
 class FlameBossProbe(FlameBossEntity, SensorEntity):
     """Pit (slot 0) or meat probe (slots 1-3). Unknown when unplugged."""
 
@@ -59,6 +68,9 @@ class FlameBossProbe(FlameBossEntity, SensorEntity):
         temps = self._client.state.temps
         return temps[self._index] if self._index < len(temps) else None
 
+    def _to_display(self, celsius):
+        return _display_temp(self.hass, celsius)
+
     @property
     def extra_state_attributes(self) -> dict | None:
         s = self._client.state
@@ -67,7 +79,8 @@ class FlameBossProbe(FlameBossEntity, SensorEntity):
             attrs["label"] = s.labels[self._index]
         alarm = s.meat_alarms.get(self._index)
         if alarm:
-            attrs["done_temp"] = decode_temp(alarm.get("done_temp"))
+            attrs["done_temp"] = self._to_display(decode_temp(alarm.get("done_temp")))
+            attrs["keep_warm_temp"] = self._to_display(decode_temp(alarm.get("warm_temp")))
             attrs["alarm_action"] = alarm.get("action")
         return attrs or None
 
@@ -129,7 +142,7 @@ class FlameBossRunState(FlameBossEntity, SensorEntity):
 
     @property
     def native_value(self) -> str | None:
-        v = self._client.state.run_state
+        v = self._client.state.status
         return v if v in self._attr_options else None
 
 
@@ -188,4 +201,4 @@ class FlameBossTimerEnd(FlameBossEntity, SensorEntity):
         t = self._client.state.timer
         if not t:
             return None
-        return {"action": t.get("action"), "status": t.get("status"), "hold_temp": decode_temp(t.get("hold"))}
+        return {"action": t.get("action"), "status": t.get("status"), "hold_temp": _display_temp(self.hass, decode_temp(t.get("hold")))}

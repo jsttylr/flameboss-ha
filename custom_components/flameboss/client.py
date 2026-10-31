@@ -111,6 +111,17 @@ class FlameBossState:
     last_message: float | None = None
     last_event: str | None = None
 
+    _cook_seen: bool = False
+
+    @property
+    def status(self) -> str | None:
+        """idle / run / error. EGG Genius never sends "state", so fall back to the cook ID."""
+        if self.run_state:
+            return self.run_state
+        if self.cook_id is not None:
+            return "run" if self.cook_id else "idle"
+        return None
+
     @property
     def alarm_active(self) -> bool:
         """True while the controller is sounding any alert."""
@@ -131,10 +142,11 @@ class FlameBossState:
                     self.blower = round(float(msg["blower"]) / 100.0, 1)
                 except (TypeError, ValueError):
                     pass
-            if "cook_id" in msg:
+            if msg.get("cook_id") is not None:
                 self.cook_id = msg["cook_id"]
         elif name == "cook":
             self.cook_id = msg.get("id", self.cook_id)
+            self._cook_seen = True
         elif name == "set_temp" and "value" in msg:
             self.set_temp = decode_temp(msg["value"])
         elif name == "id":
@@ -201,7 +213,8 @@ def _new_mqtt_client(client_id: str) -> mqtt.Client:
 class FlameBossClient:
     """Keeps one MQTT connection to a controller and tracks its state."""
 
-    KEEPALIVE = 15
+    # Ping every 5 s like the official app; the controller's own MQTT timeout is 10 s.
+    KEEPALIVE = 5
 
     def __init__(
         self,
@@ -292,6 +305,7 @@ class FlameBossClient:
 
     def _connect(self) -> None:
         client = _new_mqtt_client(f"ha-flameboss-{uuid.uuid4().hex[:8]}")
+        client.enable_logger(logging.getLogger(f"{__name__}.paho"))
         client.username_pw_set(self._username, self.pin)
         client.on_connect = self._on_connect
         client.on_disconnect = self._on_disconnect
@@ -325,6 +339,7 @@ class FlameBossClient:
             return
         self.auth_failed = False
         self.last_error = None
+        _LOGGER.info("Flame Boss %s: connected", self.host)
         topic = (
             f"flameboss/{self.state.device_id}/send/#"
             if self.state.device_id is not None
@@ -337,12 +352,17 @@ class FlameBossClient:
         self._loop.call_soon_threadsafe(self._set_connected, True)
 
     def _on_disconnect(self, client, userdata, *args) -> None:
+        rc = args[1] if len(args) >= 2 else (args[0] if args else None)
+        _LOGGER.info("Flame Boss %s: disconnected (%s)", self.host, rc)
         self._loop.call_soon_threadsafe(self._disconnected.set)
 
     def _on_message(self, client, userdata, message) -> None:
         data = decode_payload(message.payload)
         if data is None:
+            _LOGGER.debug("Flame Boss %s: undecodable message on %s", self.host, message.topic)
             return
+        if _LOGGER.isEnabledFor(logging.DEBUG):
+            _LOGGER.debug("Flame Boss %s <- %s %s", self.host, message.topic, _redact(data))
         parts = message.topic.split("/")
         topic_id = int(parts[1]) if len(parts) >= 2 and parts[1].isdigit() else None
         self._loop.call_soon_threadsafe(self._handle, data, topic_id)
@@ -352,7 +372,11 @@ class FlameBossClient:
     def _handle(self, data: dict[str, Any], topic_id: int | None) -> None:
         if self.state.device_id is None and topic_id is not None:
             self.state.device_id = topic_id
-        event = self.state.apply(data)
+        try:
+            event = self.state.apply(data)
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Flame Boss: could not handle message %s", _redact(data))
+            return
         if event and self._on_event:
             self._on_event(event, data)
         self._notify()
@@ -391,6 +415,7 @@ class FlameBossClient:
         info = await self._loop.run_in_executor(
             None, client.publish, topic, encode_command(data), 1
         )
+        _LOGGER.debug("Flame Boss %s -> %s %s (rc %s)", self.host, topic, _redact(data), info.rc)
         if info.rc != 0:
             raise ConnectionError(f"Send failed (code {info.rc})")
 

@@ -32,12 +32,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: FlameBossConfigEntry) ->
         app = state.versions.get("app")
         if app and str(app) not in fw_seen:
             fw_seen.append(str(app))
-            dev_reg = dr.async_get(hass)
-            device = dev_reg.async_get_device(
-                identifiers={(DOMAIN, entry.unique_id or entry.entry_id)}
+            dr.async_get(hass).async_get_or_create(
+                config_entry_id=entry.entry_id,
+                identifiers={(DOMAIN, entry.unique_id or entry.entry_id)},
+                sw_version=str(app),
             )
-            if device:
-                dev_reg.async_update_device(device.id, sw_version=str(app))
         # Remember the device ID once the controller tells us, so commands work
         # right away after a restart.
         if state.device_id is not None and entry.data.get(CONF_DEVICE_ID) != state.device_id:

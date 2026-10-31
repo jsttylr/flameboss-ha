@@ -109,7 +109,7 @@ async def test_flow_and_entities(hass, socket_enabled):
         st = lambda e: hass.states.get(e).state
         assert st(p + "meat_probe_1") == "65.5"
         assert hass.states.get(p + "meat_probe_1").attributes["label"] == "Brisket"
-        assert hass.states.get(p + "meat_probe_1").attributes["done_temp"] == 90.6
+        assert hass.states.get(p + "meat_probe_1").attributes["done_temp"] == 90.6  # metric test
         assert st(p + "meat_probe_2") == "unknown"
         assert st(p + "meat_probe_3") == "90.0"
         assert st(p + "blower") == "25.5"
