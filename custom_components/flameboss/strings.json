@@ -1,0 +1,99 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Flame Boss / EGG Genius",
+        "description": "Enter the controller's IP address and its PIN (in the Flame Boss / EGG Genius app under Controllers > Security > Show PIN, or on the controller's settings screen). The controller must be on the same network as Home Assistant.",
+        "data": {
+          "host": "IP address",
+          "pin": "PIN",
+          "port": "Port"
+        }
+      },
+      "discovery_confirm": {
+        "description": "Found a Flame Boss / EGG Genius controller at {host}. Enter its PIN to connect (app: Controllers > Security > Show PIN).",
+        "data": {
+          "pin": "PIN"
+        }
+      },
+      "reauth_confirm": {
+        "description": "The controller rejected the PIN. Enter the current PIN.",
+        "data": {
+          "pin": "PIN"
+        }
+      },
+      "reconfigure": {
+        "description": "Change the controller's IP address or PIN.",
+        "data": {
+          "host": "IP address",
+          "pin": "PIN"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the controller. Check the IP address and that it is powered on and on Wi-Fi.",
+      "invalid_auth": "The controller rejected the PIN."
+    },
+    "abort": {
+      "already_configured": "This controller is already set up.",
+      "reauth_successful": "PIN updated.",
+      "reconfigure_successful": "Settings updated."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "pit_temp": {
+        "name": "Pit temperature"
+      },
+      "meat_temp": {
+        "name": "Meat probe {number}"
+      },
+      "blower": {
+        "name": "Blower"
+      },
+      "set_temp": {
+        "name": "Pit setpoint"
+      },
+      "device_id": {
+        "name": "Device ID"
+      },
+      "run_state": {
+        "name": "Status",
+        "state": {
+          "idle": "Idle",
+          "run": "Running",
+          "error": "Error",
+          "production": "Production test"
+        }
+      },
+      "wifi_rssi": {
+        "name": "Wi-Fi signal"
+      },
+      "dc_input": {
+        "name": "Supply voltage"
+      },
+      "timer_end": {
+        "name": "Timer ends"
+      }
+    },
+    "number": {
+      "target_temp": {
+        "name": "Target pit temperature"
+      }
+    },
+    "binary_sensor": {
+      "connected": {
+        "name": "Connected"
+      },
+      "alarm": {
+        "name": "Alarm"
+      }
+    },
+    "button": {
+      "silence_alarm": {
+        "name": "Silence alarm"
+      }
+    }
+  }
+}

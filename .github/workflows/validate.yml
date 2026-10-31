@@ -1,0 +1,33 @@
+name: Validate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  hassfest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hacs/action@main
+        with:
+          category: integration
+          ignore: brands
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: sudo apt-get update && sudo apt-get install -y mosquitto
+      - run: printf 'fb:1234\n' > pw && mosquitto_passwd -U pw && printf 'listener 18830 127.0.0.1\nallow_anonymous false\npassword_file %s/pw\n' "$PWD" > mosq.conf && mosquitto -c mosq.conf -d
+      - run: pip install pytest-homeassistant-custom-component paho-mqtt
+      - run: pytest -q

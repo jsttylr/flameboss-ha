@@ -1,0 +1,14 @@
+{
+  "domain": "flameboss",
+  "name": "Flame Boss / EGG Genius (local)",
+  "codeowners": ["@jsttylr"],
+  "config_flow": true,
+  "documentation": "https://github.com/jsttylr/flameboss-ha",
+  "integration_type": "device",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/jsttylr/flameboss-ha/issues",
+  "loggers": ["custom_components.flameboss"],
+  "requirements": ["paho-mqtt>=1.6.1"],
+  "version": "0.1.0",
+  "zeroconf": ["_flameboss._tcp.local."]
+}
